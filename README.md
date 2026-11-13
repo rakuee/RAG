@@ -36,8 +36,9 @@ Interfaz Streamlit     → muestra la respuesta, las fuentes, o un aviso si no h
 | `vectorstore.py` | Genera los embeddings y crea o carga el índice en ChromaDB. |
 | `rag_chain.py` | Cadena RAG: recuperación + prompt + Gemini. Define el mensaje de "sin información". |
 | `app.py` | Interfaz web en Streamlit. |
+| `build_index.py` | Crea (o vuelve a crear) el índice vectorial y muestra cuántos fragmentos tiene cada archivo. |
 | `diagnose.py` | Revisa que cada documento se pueda leer y cuánto texto se extrae. |
-| `chroma_db/` | Índice vectorial ya generado (se puede regenerar). |
+| `chroma_db/` | Índice vectorial. **No se incluye en el repositorio**: se genera con `build_index.py` (paso 9). |
 | `.env` | Tu clave de API de Google (no se sube a GitHub). |
 | `requirements.txt` | Dependencias de Python. |
 
@@ -147,25 +148,19 @@ python ingest.py
 
 ## 9. Crear el índice vectorial
 
-El repositorio ya incluye un índice en `chroma_db/`. Debes regenerarlo si **agregas, cambias o eliminas documentos** en `docs/`, o si es la primera vez que lo ejecutas en tu equipo y quieres asegurarte de que coincide con tus documentos.
-
-**Importante:** borra primero la carpeta `chroma_db/`. Si no lo haces, los fragmentos nuevos se agregan a los anteriores y aparecerán duplicados en las fuentes.
-
-**Windows (PowerShell):**
-
-```powershell
-Remove-Item -Recurse -Force chroma_db
-python -c "from vectorstore import build_vectorstore; build_vectorstore()"
-```
-
-**macOS / Linux:**
+El repositorio **no incluye** el índice (`chroma_db/` está en `.gitignore`), así que debes crearlo **la primera vez** que ejecutes el proyecto y cada vez que **agregues, cambies o elimines documentos** en `docs/`:
 
 ```bash
-rm -rf chroma_db
-python -c "from vectorstore import build_vectorstore; build_vectorstore()"
+python build_index.py
 ```
 
-La primera vez se descarga el modelo de embeddings `paraphrase-multilingual-MiniLM-L12-v2` (unos 470 MB) desde Hugging Face; las siguientes veces se usa la copia local. Al terminar verás un mensaje como `Indexados N chunks en ChromaDB (./chroma_db).`
+El script borra el índice anterior (para que no haya fragmentos duplicados), indexa todos los documentos de `docs/` y muestra cuántos fragmentos generó cada archivo. Para probar además la búsqueda semántica:
+
+```bash
+python build_index.py --query "¿Cuánto pesaba Tembo?"
+```
+
+La primera vez se descarga el modelo de embeddings `paraphrase-multilingual-MiniLM-L12-v2` (unos 470 MB) desde Hugging Face; las siguientes veces se usa la copia local. Al terminar verás `Índice listo.`
 
 ---
 
@@ -219,15 +214,16 @@ Se abrirá el navegador en **http://localhost:8501**. Si no se abre solo, copia 
 
 | Problema | Solución |
 | --- | --- |
-| `KeyError: 'GOOGLE_API_KEY'` | Falta el archivo `.env` o la variable está mal escrita (paso 7). Ejecuta la app desde la carpeta del proyecto. |
+| `No se encontró GOOGLE_API_KEY` | Falta el archivo `.env` o la variable está mal escrita (paso 7). Ejecuta la app desde la carpeta del proyecto. |
+| La app siempre responde "No dispongo de información suficiente…" | No existe el índice o está vacío. Ejecuta `python build_index.py` (paso 9). |
 | `'streamlit' no se reconoce como un comando` | El entorno virtual no está activo (paso 5). También puedes usar `python -m streamlit run app.py`. |
 | Error 404 / "model not found" de Gemini | El modelo cambió de nombre o ya no está disponible. Cambia `model=` en `rag_chain.py` por uno de la [lista de modelos de Gemini](https://ai.google.dev/gemini-api/docs/models). En los modelos más nuevos (por ejemplo `gemini-3.6-flash`), elimina además la línea `temperature=0`, porque esos modelos ya no aceptan ese parámetro. |
 | Error 429 / "quota exceeded" | Superaste el límite gratuito de peticiones por minuto. Espera un momento y vuelve a intentar. |
-| Las fuentes aparecen repetidas | Se indexó dos veces sin borrar `chroma_db/`. Bórrala y regenera el índice (paso 9). |
+| Las fuentes aparecen repetidas | Se indexó dos veces sin limpiar el índice. Regenéralo con `python build_index.py` (paso 9). |
 | La app responde con documentos viejos | El índice no se regeneró después de cambiar `docs/`. Repite el paso 9. |
 | Falla la instalación de `unstructured` | Solo se necesita para archivos `.md`. Prueba con Python 3.12, o quítalo de `requirements.txt` si no usarás Markdown. |
-| Aviso `LangChainDeprecationWarning` sobre `HuggingFaceEmbeddings` | Es solo una advertencia; la aplicación funciona igual. |
-| La primera pregunta tarda mucho | Normal: se carga el modelo de embeddings en memoria. |
+| `ModuleNotFoundError: langchain_chroma` o `langchain_huggingface` | Vuelve a instalar los requerimientos: `pip install -r requirements.txt`. |
+| La primera pregunta tarda mucho | Normal: se carga el modelo de embeddings en memoria. Las siguientes preguntas son más rápidas porque se reutiliza. |
 
 ---
 

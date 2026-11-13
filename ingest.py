@@ -21,7 +21,7 @@ def load_documents():
         if filename.lower().endswith(".pdf"):
             loader = PyPDFLoader(path)
         elif filename.lower().endswith(".txt"):
-            loader = TextLoader(path, encoding="utf-8")
+            loader = TextLoader(path, encoding="utf-8-sig")  # ignora el BOM si existe
         elif filename.lower().endswith(".md"):
             loader = UnstructuredMarkdownLoader(path)
         else:

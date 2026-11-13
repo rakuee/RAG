@@ -1,6 +1,6 @@
 # app.py
 import streamlit as st
-from rag_chain import ask, NO_ANSWER_STRING
+from rag_chain import ask, is_no_answer
 
 st.set_page_config(page_title="RAG Document Assistant", page_icon="📚")
 st.title("📚 Asistente de Documentos (RAG)")
@@ -28,12 +28,12 @@ if prompt := st.chat_input("Escribe tu pregunta sobre los documentos..."):
 
         st.markdown(answer)
 
-        if answer.strip() == NO_ANSWER_STRING:
+        if is_no_answer(answer):
             st.warning(
                 "⚠️ El sistema no encontró evidencia suficiente en los documentos indexados."
             )
         else:
-            with st.expander("📎 Ver fuentes utilizadas"):
+            with st.expander("📎 Ver fragmentos recuperados"):
                 for i, f in enumerate(fuentes, 1):
                     st.markdown(f"**{i}. {f['archivo']}**")
                     st.caption(f"...{f['fragmento']}...")
